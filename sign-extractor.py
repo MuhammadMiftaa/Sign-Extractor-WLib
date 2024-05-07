@@ -9,14 +9,23 @@ from skimage import measure, morphology
 from skimage.color import label2rgb
 from skimage.measure import regionprops
 import numpy as np
+from math import log10, sqrt 
 
 
-'''
-Import gambar yang ingin diproses (.jpg, .jpeg, .png)
-Lalu citra tanda tangan dikonversi ke citra biner => 127 : nilai ambang batas; 255 : nilai maksimum
-'''
-img = cv2.imread('./inputs/sign.jpg', 0)
-img = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)[1]  
+def PSNR(original, compressed): 
+    mse = np.mean((original - compressed) ** 2) 
+    if(mse == 0):  # MSE is zero means no noise is present in the signal . 
+                  # Therefore PSNR have no importance. 
+        return 100
+    max_pixel = 255.0
+    psnr = 20 * log10(max_pixel / sqrt(mse)) 
+    return psnr 
+
+def PSNRread(): 
+     original = cv2.imread("./inputs/sign.jpg") 
+     compressed = cv2.imread("./outputs/output.png", 1) 
+     value = PSNR(original, compressed) 
+     print(f"PSNR value is {value} dB") 
 
 def sauvola_threshold(image, window_size=25, k=0.2, r=128):
     # Matriks kernel untuk operasi konvolusi
@@ -36,6 +45,16 @@ def sauvola_threshold(image, window_size=25, k=0.2, r=128):
     return binary_image
 
 '''
+Import gambar yang ingin diproses (.jpg, .jpeg, .png)
+Lalu citra tanda tangan dikonversi ke citra biner => 127 : nilai ambang batas; 255 : nilai maksimum
+Menggunakan transformasi biner sederhana
+'''
+img = cv2.imread('./inputs/sign.jpg', 0)
+img = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)[1]  
+plt.imsave('./alur/1.png', img)
+
+
+'''
 Parameter konstan sebagai nilai-nilai ambang batas (threeshold) yang berfungsi untuk menghilangkan 
 nilai(outlier) dan juga noise disekitar tanda tangan yang terlalu kecil dan terlalu besar.
 '''
@@ -47,22 +66,23 @@ parameter_konstan_4 = 18  #Untuk menghilangkan outlier berukuran besar
 
 '''
 SEGMENTASI CITRA => Menganalis atau menyeleksi titik-titik yang terhubung dan membentuk tanda tangan
-Variabel blob untuk menyimpan kumpulan biner dari proses konversi citra binary. Operasi ini menghasilkan sebuah array 
-boolean yang menunjukkan piksel mana yang memiliki intensitas di atas rata-rata dan mana yang di bawah rata-rata.
-Citra yang terbentuk piksel-piksel yang intensitasnya di atas rata-rata akan diberi nilai maksimum (putih), 
-dan piksel-piksel yang intensitasnya di bawah rata-rata akan diberi nilai minimum (hitam).
+Variabel blob untuk menyimpan kumpulan biner dari proses konversi citra binary. Operasi ini menghasilkan sebuah citra 
+yang menunjukkan piksel mana yang memiliki intensitas di atas rata-rata dan mana yang di bawah rata-rata.
 '''
 blobs = img > img.mean() 
+plt.imsave('./alur/2.png', blobs)
 '''
 blobs_labels mengandung informasi tentang komponen-komponen terhubung yang ada dalam citra biner blobs, yang dapat 
 digunakan untuk analisis lebih lanjut atau untuk visualisasi komponen-komponen tersebut dalam konteks gambar asli.
 '''
 blobs_labels = measure.label(blobs, background=1)
+plt.imsave('./alur/3.png', blobs_labels)
 '''
 Variabel ini digunakan untuk menyimpan citra hasil overlay dari blobs_label terhubung ke dalam gambar asli. Citra ini 
 memvisualisasi komponen-komponen terhubung dalam konteks gambar asli, dengan label-label berbeda diwakili dengan warna berbeda.
 '''
 image_label_overlay = label2rgb(blobs_labels, image=img)
+plt.imsave('./alur/4.png', image_label_overlay)
 
 
 ''' Inisialisasi variabel the_biggest_component, total_area, counter, dan average untuk menyimpan statistik komponen-komponen terhubung. '''
@@ -95,15 +115,21 @@ small_threshold = ((rata_rata/parameter_konstan_1)*parameter_konstan_2)+paramete
 big_threshold = small_threshold*parameter_konstan_4
 ''' Menghapus pixels yang lebih kecil daripada threshold small_threshold'''
 pre_version = morphology.remove_small_objects(blobs_labels, small_threshold)
+plt.imsave('./alur/5.png', pre_version)
 ''' Menghapus pixels yang lebih besar daripada threshold big_threshold dan menghapus pixels terhubung lain yang mengganggu '''
 component_sizes = np.bincount(pre_version.ravel())
 too_small = component_sizes > (big_threshold)
 too_small_mask = too_small[pre_version]
 pre_version[too_small_mask] = 0
 ''' Menyimpan citra binary versi awal berwarna kuning-ungu (sebelum konversi binary) '''
+plt.imsave('./alur/6.png', pre_version)
 plt.imsave('pre_version.png', pre_version)
 
 ''' Mengkonversi binary dari warna kuning-ungu ke hitam-putih dengan metode Otsu '''
 img = cv2.imread('pre_version.png', 0)
 img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
+cv2.imwrite("./alur/7.png", img)
 cv2.imwrite("./outputs/output.png", img)
+PSNRread()
+
+
