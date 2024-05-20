@@ -1,1 +1,0 @@
-cv2.THRESH_BINARY_INV | 
