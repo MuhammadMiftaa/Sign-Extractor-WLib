@@ -48,9 +48,9 @@ Lalu citra tanda tangan dikonversi ke citra biner => 127 : nilai ambang batas; 2
 Menggunakan transformasi biner sederhana
 '''
 img = cv2.imread('./inputs/sign2.jpg', 0)
+cv2.imwrite("./alur/0.png", img)
 # img = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)[1] 
 img = sauvola_threshold(img)
-# cv2.imwrite("./alur/1.png", img)
 cv2.imwrite("./alur/1.png", img)
 
 
